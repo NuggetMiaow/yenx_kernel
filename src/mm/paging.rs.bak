@@ -1,0 +1,50 @@
+use core::mem::MaybeUninit;
+use x86_64::{
+    registers::control::Cr3,
+    structures::paging::{
+        page_table::PageTableEntry,
+        PageTable,
+        PageTableFlags,
+        PhysFrame,
+        RecursivePageTable,
+    },
+    PhysAddr,
+};
+
+const RECURSIVE_INDEX: usize = 511;
+
+static mut P4_TABLE: MaybeUninit<PageTable> = MaybeUninit::zeroed();
+static mut P3_TABLE: MaybeUninit<PageTable> = MaybeUninit::zeroed();
+static mut P2_TABLE: MaybeUninit<PageTable> = MaybeUninit::zeroed();
+
+pub fn init() -> RecursivePageTable<'static> {
+    unsafe {
+        let p4_ptr = P4_TABLE.as_mut_ptr();
+        let p3_ptr = P3_TABLE.as_mut_ptr();
+        let p2_ptr = P2_TABLE.as_mut_ptr();
+        let p4 = &mut *p4_ptr;
+        let p3 = &mut *p3_ptr;
+        let p2 = &mut *p2_ptr;
+
+        let p4_phys = PhysAddr::new(p4_ptr as u64);
+        let p3_phys = PhysAddr::new(p3_ptr as u64);
+        let p2_phys = PhysAddr::new(p2_ptr as u64);
+
+        let f = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
+
+        p4[0].set_addr(p3_phys, f);
+        p3[0].set_addr(p2_phys, f);
+        p2[0].set_addr(PhysAddr::new(0x0), f | PageTableFlags::HUGE_PAGE);
+        p2[1].set_addr(PhysAddr::new(0x200000), f | PageTableFlags::HUGE_PAGE);
+        p4[RECURSIVE_INDEX].set_addr(p4_phys, f);
+
+        let (_, cr3_flags) = Cr3::read();
+        Cr3::write(PhysFrame::containing_address(p4_phys), cr3_flags);
+
+        // 这里很关键：换 CR3 后，必须通过递归映射地址拿 P4 引用
+        // 0xFFFF_FFFF_FFFF_F000 = 511:511:511:511:0，即递归映射下的 P4 表地址
+        let p4_recursive = &mut *(0xFFFF_FFFF_FFFF_F000 as *mut PageTable);
+        RecursivePageTable::new(p4_recursive)
+            .expect("recursive page table validation failed")
+    }
+}
