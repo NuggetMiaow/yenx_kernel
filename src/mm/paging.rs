@@ -2,7 +2,7 @@ use core::ptr::write_volatile;
 
 use x86_64::{PhysAddr, registers::control::Cr3, structures::paging::PhysFrame};
 
-unsafe fn make_pml4e(p: i32, rw: i32, user: i32, pwt: i32, pcd: i32, access: i32, dirty: i32, ps: i32, physaddr: u64, xd: i32) -> u64 {
+pub unsafe fn make_pml4e(p: i32, rw: i32, user: i32, pwt: i32, pcd: i32, access: i32, dirty: i32, ps: i32, physaddr: u64, xd: i32) -> u64 {
     let mut pml4e: u64 = 0;
     pml4e |= p as u64;
     pml4e |= (rw as u64) << 1;
@@ -18,7 +18,7 @@ unsafe fn make_pml4e(p: i32, rw: i32, user: i32, pwt: i32, pcd: i32, access: i32
     pml4e
 }
 
-unsafe fn make_pdpte(p: i32, rw: i32, user: i32, pwt: i32, pcd: i32, access: i32, dirty: i32, ps: i32, physaddr: u64, xd: i32) -> u64 {
+pub unsafe fn make_pdpte(p: i32, rw: i32, user: i32, pwt: i32, pcd: i32, access: i32, dirty: i32, ps: i32, physaddr: u64, xd: i32) -> u64 {
     let mut pdpt: u64 = 0;
     pdpt |= p as u64;
     pdpt |= (rw as u64) << 1;
@@ -34,7 +34,23 @@ unsafe fn make_pdpte(p: i32, rw: i32, user: i32, pwt: i32, pcd: i32, access: i32
     pdpt
 }
 
-unsafe fn make_pde_2mb(p: i32, rw: i32, user: i32, pwt: i32, pcd: i32, access: i32, dirty: i32, ps: i32, g: i32, pat: i32, physaddr: u64, xd: i32) -> u64 {
+pub unsafe fn make_pde(p: i32, rw: i32, user: i32, pwt: i32, 
+    pcd: i32, access: i32, ps: i32, physaddr: u64, xd: i32) -> u64 {
+    let mut pd: u64 = 0;
+    pd |= p as u64;
+    pd |= (rw as u64) << 1;
+    pd |= (user as u64) << 2;
+    pd |= (pwt as u64) << 3;
+    pd |= (pcd as u64) << 4;
+    pd |= (access as u64) << 5;
+    pd |= (ps as u64) << 7;
+    pd |= physaddr & 0x000FFFFFFFFFF000;
+    pd |= (0 as u64) << 52;
+    pd |= (xd as u64) << 63;
+    pd
+}
+
+pub unsafe fn make_pde_2mb(p: i32, rw: i32, user: i32, pwt: i32, pcd: i32, access: i32, dirty: i32, ps: i32, g: i32, pat: i32, physaddr: u64, xd: i32) -> u64 {
     let mut pd: u64 = 0;
     pd |= p as u64;
     pd |= (rw as u64) << 1;
@@ -51,6 +67,24 @@ unsafe fn make_pde_2mb(p: i32, rw: i32, user: i32, pwt: i32, pcd: i32, access: i
     pd |= (0 as u64) << 52;
     pd |= (xd as u64) << 63;
     pd
+}
+
+pub unsafe fn make_pte(p: i32, rw: i32, user: i32, pwt: i32, pcd: i32, 
+    access: i32, dirty: i32, pat: i32, g: i32, physaddr: u64, xd: i32) -> u64 {
+    let mut pt: u64 = 0;
+    pt |= p as u64;
+    pt |= (rw as u64) << 1;
+    pt |= (user as u64) << 2;
+    pt |= (pwt as u64) << 3;
+    pt |= (pcd as u64) << 4;
+    pt |= (access as u64) << 5;
+    pt |= (dirty as u64) << 6;
+    pt |= (pat as u64) << 7;
+    pt |= (g as u64) << 8;
+    pt |= physaddr & 0x000FFFFFFFFFF000;
+    pt |= (0 as u64) << 52;
+    pt |= (xd as u64) << 63;
+    pt
 }
 
 const PG_PRESENT: i32 = 1;
