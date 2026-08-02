@@ -126,6 +126,9 @@ pub unsafe fn init() -> &'static mut u8 {
     write_volatile(&mut *((pd_addr + 16) as *mut u64), pd3);
     write_volatile(&mut *((pd_addr + 24) as *mut u64), pd4);
 
+    let pd_for_pt = make_pde(PG_PRESENT, PG_WRITEABLE, PG_SUPERVISOR, 0, 0, 0, PG_NONHUGEPAGE, pt_addr, PG_EXECUTABLE);
+    write_volatile(&mut *((pd_addr + 8) as *mut u64), pd_for_pt);
+
     let (_, cr3_flags) = Cr3::read();
     Cr3::write(PhysFrame::containing_address(PhysAddr::new(pml4_addr)), cr3_flags);
 

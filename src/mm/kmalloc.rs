@@ -66,44 +66,37 @@ pub unsafe fn kmalloc(size: u64) -> &'static mut u8 {
     if got {
         // TODO: Process PDPTE and PML4E
         // 1. Get the position
-        let mut pd_off = frame_index / 512;
-        if pd_off % 512 != 0 {
-            pd_off += 1;
-        }
-
-        let mut pdpt_off = 0;
-        let mut pml4_off = 0;
-
-        // 2. Get the address of PML4
-        //let (pml4_addr_phys, _) = Cr3::read();
-        //let pml4_addr = pml4_addr_phys.start_address();
-        let pml4_addr = 0x10000;
-
-        // 3. Get the address of PDPTE
+     let pml4_addr = 0x10000;
         let pdpt_addr = pml4_addr + 4096;
-
-        // 4. Get the root of PD
         let pd_addr = pdpt_addr + 4096;
-        
-        // 5. Get the address of PDE
-        let pde_addr = pd_addr + (pd_off as u64) * 8;
+        let pt_addr = pd_addr + 4096;
 
-        // 6. Check PDE
-        // Initialize PTE
-        let mem_physaddr = (0x800000 + frame_index * 4096) as u64;
+        // 2. Get the address of physic memory
+        let mem_physaddr = 0x800000 + (frame_index as u64) * 4096;
+
+        // 3. get the index of PT
+        let pt_index = frame_index % 512;
+
+        // 4. Get the address pf PTE
+        let pte_addr = pt_addr + (pt_index as u64) * 8;
+
+        // 5. Initialize PTE
         let pte = make_pte(PG_PRESENT, PG_WRITEABLE, PG_USER, 
-            0, 0, 0, 0, 0, 0, mem_physaddr, PG_EXECUTABLE);
-        // Save PTE
-        let pte_addr = (pd_addr as u64) + 4096 + (pd_off as u64) * 4096 + (frame_index - (pd_off - 1) * 256) as u64;
+            0, 0, 0, 0, 0, 1, mem_physaddr, PG_EXECUTABLE);
         unsafe { *(pte_addr as *mut u64) = pte; }
+        
+        // 6. Set PDE
+        let pde_addr = pd_addr + 8; // PD[1]
+        let pde_content = *(pde_addr as *const u64);
 
-        if pde_addr & 0b10000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000 == 0 {
-            // Initialize PDE
-            // Todo: premission
-            let pde = make_pde(PG_PRESENT, PG_WRITEABLE, PG_USER, 0, 0, 0, PG_NONHUGEPAGE, pte_addr, PG_EXECUTABLE);
-            // Save PDE
-            unsafe { *(pde_addr as *mut u64) = pde; }
+        if pde_content == 0 {
+            let pde = make_pde(PG_PRESENT, PG_WRITEABLE, PG_SUPERVISOR, 
+                0, 0, 0, PG_NONHUGEPAGE, pt_addr, PG_EXECUTABLE);
+            *(pde_addr as *mut u64) = pde;
         }
+
+        // 7. Flush TLB
+        x86_64::instructions::tlb::flush_all();
 
         return &mut *(mem_physaddr as *mut u8);
     } else {

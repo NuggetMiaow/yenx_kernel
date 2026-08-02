@@ -32,6 +32,9 @@ pub extern "C" fn kernel_main(_magic: u32, _mb_info_addr: u32) -> ! {
     println!("Level 4 page table at: {:?}", level_4_page_table.start_address());
     println!("x2APIC enabled!");
 
+    unsafe {
+       let mem = mm::kmalloc::kmalloc(4096 as u64);
+    }
 
     x86_64::instructions::interrupts::enable();
 
