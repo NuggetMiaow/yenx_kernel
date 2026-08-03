@@ -2,8 +2,11 @@
 #![no_main]
 #![feature(abi_x86_interrupt)]
 
+extern crate alloc;
+
 use core::{panic::PanicInfo, ptr::write_volatile};
 
+use alloc::boxed::Box;
 use yenx_kernel::{
     apic::{apic_init, apic_timer_diag, apic_timer_init, enable_x2apic}, init, mm::{self, frame_alloc::alloc_frame, malloc::{kfree, kmalloc}}, print, println
 };
@@ -34,15 +37,8 @@ pub extern "C" fn kernel_main(_magic: u32, _mb_info_addr: u32) -> ! {
     println!("x2APIC enabled!");
 
     unsafe {
-       let a1 = kmalloc(8);
-       *a1 = 91;
-       let a2 = kmalloc(8);
-       *a2 = 34;
-       println!("a1: {:?}(0x{:x})", *a1, a1 as u64);
-       println!("a2: {:?}(0x{:x})", *a2, a2 as u64);
-       kfree(a1);
-       let a3 = kmalloc(8);
-       println!("a3: {:?}(0x{:x})", *a3, a3 as u64);
+       let a1 = Box::<&str>::new("Hello, World!");
+       print!("a1: Box<&str> = {}", a1);
     }
 
     x86_64::instructions::interrupts::enable();
