@@ -1,0 +1,135 @@
+use x86_64::registers::control::Cr3;
+
+use crate::{mm::{frame_alloc::{alloc_frame, zero_page4k}, paging::{make_pde, make_pte}}, println};
+
+pub static mut PT_CURRENT: usize = 0;
+
+const PG_PRESENT: u64 = 1;
+const PG_WRITEABLE: u64 = 1 << 1;
+const PG_USER: u64 = 1 << 2;
+const PG_CACHED: u64 = 1 << 3;
+const PG_EXECUTABLE: u64 = 0 << 63;
+const PG_GLOBAL: u64 = 1 << 8;
+
+static mut PDE_COUNT: usize = 0;
+static mut PT_COUNT: usize = 0;
+
+unsafe fn translate_addr(physaddr: u64) -> u64 {
+    let (pml4_frame, _) = Cr3::read();
+    let pml4_base = pml4_frame.start_address().as_u64();
+
+    for pml4_idx in 0usize..512 {
+        let pml4e = *((pml4_base + pml4_idx as u64 * 8) as *const u64);
+        if pml4e & PG_PRESENT == 0 {
+            continue;
+        }
+        let pdpt_base = pml4e & 0x000F_FFFF_FFFF_F000;
+
+        for pdpt_idx in 0usize..512 {
+            let pdpte = *((pdpt_base + pdpt_idx as u64 * 8) as *const u64);
+            if pdpte & PG_PRESENT == 0 {
+                continue;
+            }
+
+            if pdpte & (1 << 7) != 0 {
+                let page_base = pdpte & 0x000F_FFFF_C000_0000;
+                if physaddr >= page_base && physaddr < page_base + 0x4000_0000 {
+                    return (pml4_idx as u64) << 39
+                        | (pdpt_idx as u64) << 30
+                        | (physaddr - page_base);
+                }
+                continue;
+            }
+
+            let pd_base = pdpte & 0x000F_FFFF_FFFF_F000;
+
+            for pd_idx in 0usize..512 {
+                let pde = *((pd_base + pd_idx as u64 * 8) as *const u64);
+                if pde & PG_PRESENT == 0 {
+                    continue;
+                }
+
+                if pde & (1 << 7) != 0 {
+                    let page_base = pde & 0x000F_FFFF_FFE0_0000;
+                    if physaddr >= page_base && physaddr < page_base + 0x20_0000 {
+                        return (pml4_idx as u64) << 39
+                            | (pdpt_idx as u64) << 30
+                            | (pd_idx as u64) << 21
+                            | (physaddr - page_base);
+                    }
+                    continue;
+                }
+
+                let pt_base = pde & 0x000F_FFFF_FFFF_F000;
+
+                for pt_idx in 0usize..512 {
+                    let pte = *((pt_base + pt_idx as u64 * 8) as *const u64);
+                    if pte & PG_PRESENT == 0 {
+                        continue;
+                    }
+                    let page_base = pte & 0x000F_FFFF_FFFF_F000;
+                    if physaddr >= page_base && physaddr < page_base + 0x1000 {
+                        return (pml4_idx as u64) << 39
+                            | (pdpt_idx as u64) << 30
+                            | (pd_idx as u64) << 21
+                            | (pt_idx as u64) << 12
+                            | (physaddr & 0xFFF);
+                    }
+                }
+            }
+        }
+    }
+
+    0
+}
+
+pub unsafe fn kmalloc(size: usize) -> *mut u8 {
+    let mut virt_addr: u64 = 0;
+
+    if size == 0 {
+        return core::ptr::null_mut::<u8>();
+    }
+
+    let mut count = size / 4096;
+    if size % 4096 != 0 {
+        count += 1;
+    }
+
+    for i in 0..count {
+        // 1. Get Frame
+        let frame = alloc_frame();
+        if frame == 0 {
+            return core::ptr::null_mut::<u8>();
+        }
+
+        // 2. Map Frame
+        let (pml4_addr, _) = Cr3::read();
+        let pml4_addr = pml4_addr.start_address().as_u64();
+        let pdpte_addr: u64 = pml4_addr + 4096 + 8;
+        let pdpte = *(pdpte_addr as *const u64);
+        let pd_base = pdpte & 0x000FFFFFFFFFF000;
+        if PT_COUNT == 512 {
+            PT_COUNT = 0;
+            PDE_COUNT += 1;
+            PT_CURRENT += 4096;
+        }
+        let pde_addr = pd_base + PDE_COUNT as u64 * 8;
+        let pde = *(pde_addr as *const u64);
+        if pde == 0 {
+            *(pde_addr as *mut u64) = make_pde(false, PT_CURRENT as u64, PG_PRESENT | PG_WRITEABLE | PG_EXECUTABLE);
+            zero_page4k(PT_CURRENT);
+            *(PT_CURRENT as *mut u64) = make_pte(frame, PG_PRESENT | PG_WRITEABLE | PG_EXECUTABLE);
+            PT_COUNT += 1;
+        } else {
+            *((PT_CURRENT + PT_COUNT * 8) as *mut u64) = make_pte(frame, PG_PRESENT | PG_WRITEABLE | PG_EXECUTABLE);
+            PT_COUNT += 1;
+        }
+
+        // 3. Get Virtual Address
+        if i == 0 {
+            virt_addr = translate_addr(frame);
+        }
+    }
+
+    virt_addr as *mut u8
+}

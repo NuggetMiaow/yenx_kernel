@@ -1,13 +1,42 @@
 use core::char::MAX;
+use crate::mm::{malloc::PT_CURRENT, paging::{make_pde, make_pte}};
 
-use crate::{print, println};
+use x86_64::registers::control::Cr3;
+
+use crate::{mm::paging::make_pdpte, print, println};
 
 const MAX_PAGE: usize = 131702;
 
+const PG_PRESENT: u64 = 1;
+const PG_WRITEABLE: u64 = 1 << 1;
+const PG_USER: u64 = 1 << 2;
+const PG_CACHED: u64 = 1 << 3;
+const PG_EXECUTABLE: u64 = 0 << 63;
+const PG_GLOBAL: u64 = 1 << 8;
+
 static mut FRAME_BITMAP: [u8; MAX_PAGE / 8] = [0; MAX_PAGE / 8];
 
-pub fn init_bitmap() {
+pub fn zero_page4k(page_addr: usize) {
+    unsafe {
+        for i in 0..4096 {
+            *((page_addr + i) as *mut u8) = 0;
+        }
+    }
+}
+
+pub fn init_allocator() {
     unsafe { FRAME_BITMAP.fill(0); }
+    unsafe {
+        // 1. Create New PDPTE, PD, PT
+        let (pml4_addr, _) = Cr3::read();
+        let pml4_addr = pml4_addr.start_address().as_u64();
+        let pdpt_addr: u64 = pml4_addr + 4096;
+        PT_CURRENT = (pdpt_addr as usize) + 4096 + 4096; // pt_addr
+        // here are a PD table
+        zero_page4k(PT_CURRENT);
+        *((pdpt_addr + 8) as *mut u64) = make_pdpte(PT_CURRENT as u64, PG_PRESENT | PG_WRITEABLE | PG_EXECUTABLE);
+        PT_CURRENT += 4096;
+    }
 }
 
 pub unsafe fn alloc_frame() -> u64 {  
