@@ -92,6 +92,44 @@ pub fn init(mb_info_addr: *mut u8) {
         for i in 0..FB_WIDTH * FB_HEIGHT {
             (FB_ADDR as *mut u32).add(i).write(0x313131);
         }
+
+        for i in 0..16 {
+            let mut bits: [u8; 8] = [0; 8];
+
+            bits[0] = screen::font8x16::FONT8X16[b'H' as usize][i] >> 7;
+            bits[1] = screen::font8x16::FONT8X16[b'H' as usize][i] >> 6 & 1;
+            bits[2] = screen::font8x16::FONT8X16[b'H' as usize][i] >> 5 & 1;
+            bits[3] = screen::font8x16::FONT8X16[b'H' as usize][i] >> 4 & 1;
+            bits[4] = screen::font8x16::FONT8X16[b'H' as usize][i] >> 3 & 1;
+            bits[5] = screen::font8x16::FONT8X16[b'H' as usize][i] >> 2 & 1;
+            bits[6] = screen::font8x16::FONT8X16[b'H' as usize][i] >> 1 & 1;
+            bits[7] = screen::font8x16::FONT8X16[b'H' as usize][i];
+
+            for j in 0..8 {
+                if bits[j] == 1 {
+                    put_pixel((j + 10) as usize, (i + 10) as usize, 0xFFFFFF);
+                }
+            }
+        }
+
+        for i in 0..16 {
+            let mut bits: [u8; 8] = [0; 8];
+
+            bits[0] = screen::font8x16::FONT8X16[b'i' as usize][i] >> 7;
+            bits[1] = screen::font8x16::FONT8X16[b'i' as usize][i] >> 6 & 1;
+            bits[2] = screen::font8x16::FONT8X16[b'i' as usize][i] >> 5 & 1;
+            bits[3] = screen::font8x16::FONT8X16[b'i' as usize][i] >> 4 & 1;
+            bits[4] = screen::font8x16::FONT8X16[b'i' as usize][i] >> 3 & 1;
+            bits[5] = screen::font8x16::FONT8X16[b'i' as usize][i] >> 2 & 1;
+            bits[6] = screen::font8x16::FONT8X16[b'i' as usize][i] >> 1 & 1;
+            bits[7] = screen::font8x16::FONT8X16[b'i' as usize][i];
+
+            for j in 0..8 {
+                if bits[j] == 1 {
+                    put_pixel((j + 19) as usize, (i + 10) as usize, 0xFFFFFF);
+                }
+            }
+        }
         
         // Show the information
         info!("{:?}", fb);
