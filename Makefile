@@ -22,13 +22,13 @@ iso: kernel
 	echo 'set default=0' >> iso/boot/grub/grub.cfg
 	echo 'set gfxpayload=keep' >> iso/boot/grub/grub.cfg
 	echo 'menuentry "Yenx Kernel" {' >> iso/boot/grub/grub.cfg
-	echo '    multiboot /boot/yenx.bin' >> iso/boot/grub/grub.cfg
+	echo '    multiboot2 /boot/yenx.bin' >> iso/boot/grub/grub.cfg
 	echo '    boot' >> iso/boot/grub/grub.cfg
 	echo '}' >> iso/boot/grub/grub.cfg
 	# 关键：加上 iso9660 模块
 	grub-mkimage -O i386-pc -o iso/boot/grub/core.img \
 		-p /boot/grub \
-		biosdisk part_msdos fat iso9660 multiboot normal configfile
+		biosdisk part_msdos fat iso9660 multiboot2 normal configfile
 	cat $(GRUB_PC_DIR)/cdboot.img iso/boot/grub/core.img > iso/eltorito.img
 	xorriso -as mkisofs -R -J \
 		-b eltorito.img -no-emul-boot -boot-load-size 4 -boot-info-table \

@@ -36,10 +36,8 @@ pub extern "C" fn kernel_main(_magic: u32, _mb_info_addr: u32) -> ! {
     println!("Level 4 page table at: {:?}", level_4_page_table.start_address());
     println!("x2APIC enabled!");
 
-    unsafe {
-       let a1 = Box::<&str>::new("Hello, World!");
-       print!("a1: Box<&str> = {}", a1);
-    }
+    let a1 = Box::<&str>::new("Hello, World!");
+    print!("a1: Box<&str> = {}", a1);
 
     x86_64::instructions::interrupts::enable();
 

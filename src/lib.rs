@@ -6,6 +6,7 @@ pub mod vga_buffer;
 pub mod gdt;
 pub mod apic;
 pub mod mm;
+pub mod process;
 
 pub fn init() {
     gdt::init();
