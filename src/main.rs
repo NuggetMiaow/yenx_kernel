@@ -18,13 +18,13 @@ fn panic(_info: &PanicInfo) -> ! {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn kernel_main(_magic: u32, mb_info_addr: *mut u8) -> ! {
+    info!("YENX Kernel 0.01-dev");
     unsafe {
         mm::paging::init();
         serial::serial_init();
     }
     screen::fb::init(mb_info_addr);
-    info!("YENX Kernel 0.01-dev");
-    
+
     loop {
         unsafe { core::arch::asm!("hlt") }
     }

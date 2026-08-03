@@ -2,6 +2,8 @@ use core::ptr::write_volatile;
 
 use x86_64::{PhysAddr, registers::control::Cr3, structures::paging::PhysFrame};
 
+use crate::{debug};
+
 const PG_PRESENT: u64 = 1;
 const PG_WRITEABLE: u64 = 1 << 1;
 const PG_USER: u64 = 1 << 2;
@@ -10,19 +12,23 @@ const PG_EXECUTABLE: u64 = 0 << 63;
 const PG_GLOBAL: u64 = 1 << 8;
 
 pub unsafe fn make_pml4e(physaddr: u64, flags: u64) -> u64 {
+    debug!("make_pml4e: physaddr: 0x{:x}, flags: 0x{:x}", physaddr, flags);
     0 | flags | (physaddr & 0x000FFFFFFFFFF000)
 }
 
 pub unsafe fn make_pdpte(physaddr: u64, flags: u64) -> u64 {
+    debug!("make_pdpte: physaddr: 0x{:x}, flags: 0x{:x}", physaddr, flags);
     0 | flags | (physaddr & 0x000FFFFFFFFFF000)
 }
 
 pub unsafe fn make_pde(ps: bool, physaddr: u64, flags: u64) -> u64 {
+    debug!("make_pde: ps: {}, physaddr: 0x{:x}, flags: 0x{:x}", ps, physaddr, flags);
     if ps { 0 | 1 << 7 | flags | (physaddr & 0x000FFFFFFFFFE000) } 
     else { 0 | flags | (physaddr & 0x000FFFFFFFFFF000) }
 }
 
 pub unsafe fn make_pte(physaddr: u64, flags: u64) -> u64 {
+    debug!("make_pte: physaddr: 0x{:x}, flags: 0x{:x}", physaddr, flags);
     0 | flags | (physaddr & 0x000FFFFFFFFFF000)
 }
 

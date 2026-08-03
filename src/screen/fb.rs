@@ -88,15 +88,10 @@ pub fn init(mb_info_addr: *mut u8) {
         info!("The virtual address of framebuffer is 0x{:x}", FB_ADDR);
 
         // trying to access framebuffer
-        debug!("Trying to access framebuffer...");
-        debug!("Put a rectangle on framebuffer...");
-        for x in 10..=300 {
-            for y in 10..=300 {
-                put_pixel_rgb(x, y, 0, 0, 255);
-            }
+        debug!("Clean up screen");
+        for i in 0..FB_WIDTH * FB_HEIGHT {
+            (FB_ADDR as *mut u32).add(i).write(0x313131);
         }
-        debug!("Putted a rectangle on framebuffer.");
-        debug!("Framebuffer access done.");
         
         // Show the information
         info!("{:?}", fb);
