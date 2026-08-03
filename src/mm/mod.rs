@@ -1,2 +1,2 @@
-pub mod kmalloc;
+pub mod frame_alloc;
 pub mod paging;

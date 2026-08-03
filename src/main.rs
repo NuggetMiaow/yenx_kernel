@@ -2,10 +2,10 @@
 #![no_main]
 #![feature(abi_x86_interrupt)]
 
-use core::panic::PanicInfo;
+use core::{panic::PanicInfo, ptr::write_volatile};
 
 use yenx_kernel::{
-    apic::{apic_init, apic_timer_diag, apic_timer_init, enable_x2apic}, init, mm, println
+    apic::{apic_init, apic_timer_diag, apic_timer_init, enable_x2apic}, init, mm::{self, frame_alloc::alloc_frame}, print, println
 };
 
 #[panic_handler]
@@ -33,7 +33,10 @@ pub extern "C" fn kernel_main(_magic: u32, _mb_info_addr: u32) -> ! {
     println!("x2APIC enabled!");
 
     unsafe {
-       let mem = mm::kmalloc::kmalloc(4096 as u64);
+       let a1 = alloc_frame();
+       let a2 = alloc_frame();
+       let a3 = alloc_frame();
+       println!("a1: 0x{:x}, a2: 0x{:x}, a3: 0x{:x}", a1, a2, a3);
     }
 
     x86_64::instructions::interrupts::enable();
