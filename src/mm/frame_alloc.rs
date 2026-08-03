@@ -3,7 +3,7 @@ use crate::mm::{malloc::PT_CURRENT, paging::{make_pde, make_pte}};
 
 use x86_64::registers::control::Cr3;
 
-use crate::{mm::paging::make_pdpte, print, println};
+use crate::{mm::paging::make_pdpte};
 
 const MAX_PAGE: usize = 131702;
 
@@ -20,6 +20,14 @@ pub fn zero_page4k(page_addr: usize) {
     unsafe {
         for i in 0..4096 {
             *((page_addr + i) as *mut u8) = 0;
+        }
+    }
+}
+
+pub fn zero_memory(mem_addr: usize, size: usize) {
+    unsafe {
+        for i in 0..size {
+            *((mem_addr + i) as *mut u8) = 0;
         }
     }
 }
@@ -66,7 +74,7 @@ pub unsafe fn alloc_frame() -> u64 {
     }
 
     if frame_index == 0 || frame_index == MAX_PAGE {
-        println!("No free frame found");
+        //println!("No free frame found");
         return 0;
     }
     // 2. set the frame to used

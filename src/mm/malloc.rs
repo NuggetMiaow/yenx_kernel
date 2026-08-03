@@ -1,6 +1,6 @@
 use x86_64::registers::control::Cr3;
 
-use crate::{mm::{frame_alloc::{alloc_frame, dealloc_frame, zero_page4k}, paging::{make_pde, make_pte}}, println};
+use crate::{mm::{frame_alloc::{alloc_frame, dealloc_frame, zero_page4k}, paging::{make_pde, make_pte}}};
 
 pub static mut PT_CURRENT: usize = 0;
 
@@ -14,7 +14,7 @@ const PG_GLOBAL: u64 = 1 << 8;
 static mut PDE_COUNT: usize = 0;
 static mut PT_COUNT: usize = 0;
 
-unsafe fn translate_addr(physaddr: u64) -> u64 {
+pub unsafe fn translate_addr(physaddr: u64) -> u64 {
     let (pml4_frame, _) = Cr3::read();
     let pml4_base = pml4_frame.start_address().as_u64();
 

@@ -1,9 +1,6 @@
 use core::arch::x86_64::__cpuid;
 use x86_64::registers::model_specific::{ApicBase, ApicBaseFlags};
 
-use crate::print;
-use crate::println;
-
 use x86_64::instructions::port::PortWriteOnly;
 
 const PIC1_COMMAND: u16 = 0x20;
@@ -45,7 +42,7 @@ pub fn check_x2apic() -> bool {
 
 pub fn enable_x2apic() {
     if !check_x2apic() {
-        println!("x2APIC not supported!");
+        //println!("x2APIC not supported!");
         return;
     }
 
@@ -97,7 +94,7 @@ fn x2apic_read(msr: u32) -> u64 {
 pub fn apic_init() {
     let ver = x2apic_read(X2APIC_VERSION);
     let id = x2apic_read(X2APIC_ID);
-    println!("APIC ID: {}, Version: {}", id, (ver >> 16) & 0xFF);
+    //println!("APIC ID: {}, Version: {}", id, (ver >> 16) & 0xFF);
 
     x2apic_write(X2APIC_SPURIOUS, 0xFF | (1 << 8));
 
@@ -127,7 +124,7 @@ pub fn apic_timer_diag() {
     let lvt = x2apic_read(X2APIC_LVT_TIMER);
     let init = x2apic_read(X2APIC_TIMER_INIT);
     let cur = x2apic_read(X2APIC_TIMER_CURRENT);
-    println!("DIV: 0x{:x}, LVT: 0x{:x}, INIT: 0x{:x}, CURRENT: 0x{:x}", div, lvt, init, cur);
+    //println!("DIV: 0x{:x}, LVT: 0x{:x}, INIT: 0x{:x}, CURRENT: 0x{:x}", div, lvt, init, cur);
 }
 
 pub fn x2apic_timer_rearm() {
@@ -172,8 +169,7 @@ static SCANCODE_MAP: [Option<char>; 128] = {
     map[0x2B] = Some('\\');
     map
 };
-
-pub fn read_keyboard() {
+/* pub fn read_keyboard() {
     let mut status = PortReadOnly::<u8>::new(KEYBOARD_STATUS);
     let mut data   = PortReadOnly::<u8>::new(KEYBOARD_DATA);
 
@@ -188,4 +184,4 @@ pub fn read_keyboard() {
             }
         }
     }
-}
+}*/

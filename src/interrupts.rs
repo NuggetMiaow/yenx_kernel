@@ -1,12 +1,12 @@
-use crate::process;
+
 
 use x86_64::structures::idt::PageFaultErrorCode;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 
 use lazy_static::lazy_static;
 
-use crate::println;
-use crate::gdt;
+
+use crate::{debug, error, fatal, gdt, note};
 use crate::apic;
 
 lazy_static! {
@@ -47,60 +47,60 @@ pub fn init_idt() {
 extern "x86-interrupt" fn divide_error_handler(
     stack_frame: InterruptStackFrame)
 {
-    println!("EXCEPTION: DIVIDE ERROR\n{:#?}", stack_frame);
+    fatal!("EXCEPTION: DIVIDE ERROR\n{:#?}", stack_frame);
     loop {}
 }
 
 extern "x86-interrupt" fn debug_handler(
     stack_frame: InterruptStackFrame)
 {
-    println!("EXCEPTION: DEBUG\n{:#?}", stack_frame);
+    note!("EXCEPTION: DEBUG\n{:#?}", stack_frame);
 }
 
 extern "x86-interrupt" fn nmi_handler(
     stack_frame: InterruptStackFrame)
 {
-    println!("EXCEPTION: NON-MASKABLE INTERRUPT\n{:#?}", stack_frame);
+    fatal!("EXCEPTION: NON-MASKABLE INTERRUPT\n{:#?}", stack_frame);
 }
 
 extern "x86-interrupt" fn breakpoint_handler(
     stack_frame: InterruptStackFrame)
 {
-    println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
+    debug!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
 }
 
 extern "x86-interrupt" fn overflow_handler(
     stack_frame: InterruptStackFrame)
 {
-    println!("EXCEPTION: OVERFLOW\n{:#?}", stack_frame);
+    error!("EXCEPTION: OVERFLOW\n{:#?}", stack_frame);
 }
 
 extern "x86-interrupt" fn bound_range_exceeded_handler(
     stack_frame: InterruptStackFrame)
 {
-    println!("EXCEPTION: BOUND RANGE EXCEEDED\n{:#?}", stack_frame);
+    fatal!("EXCEPTION: BOUND RANGE EXCEEDED\n{:#?}", stack_frame);
     loop {}
 }
 
 extern "x86-interrupt" fn invalid_opcode_handler(
     stack_frame: InterruptStackFrame)
 {
-    println!("EXCEPTION: INVALID OPCODE\n{:#?}", stack_frame);
+    fatal!("EXCEPTION: INVALID OPCODE\n{:#?}", stack_frame);
     loop {}
 }
 
 extern "x86-interrupt" fn device_not_available_handler(
     stack_frame: InterruptStackFrame)
 {
-    println!("EXCEPTION: DEVICE NOT AVAILABLE\n{:#?}", stack_frame);
+    error!("EXCEPTION: DEVICE NOT AVAILABLE\n{:#?}", stack_frame);
 }
 
 extern "x86-interrupt" fn double_fault_handler(
     stack_frame: InterruptStackFrame,
     error_code: u64,
 ) -> ! {
-    println!("EXCEPTION: DOUBLE FAULT\n{:#?}", stack_frame);
-    println!("Error code: {}", error_code);
+    fatal!("EXCEPTION: DOUBLE FAULT\n{:#?}", stack_frame);
+    fatal!("Error code: {}", error_code);
     loop {}
 }
 
@@ -109,8 +109,8 @@ extern "x86-interrupt" fn invalid_tss_handler(
     error_code: u64,
 )
 {
-    println!("EXCEPTION: INVALID TSS\n{:#?}", stack_frame);
-    println!("Error code: {}", error_code);
+    fatal!("EXCEPTION: INVALID TSS\n{:#?}", stack_frame);
+    fatal!("Error code: {}", error_code);
     loop {}
 }
 
@@ -119,8 +119,8 @@ extern "x86-interrupt" fn segment_not_present_handler(
     error_code: u64,
 )
 {
-    println!("EXCEPTION: SEGMENT NOT PRESENT\n{:#?}", stack_frame);
-    println!("Error code: {}", error_code);
+    fatal!("EXCEPTION: SEGMENT NOT PRESENT\n{:#?}", stack_frame);
+    fatal!("Error code: {}", error_code);
     loop {}
 }
 
@@ -129,8 +129,8 @@ extern "x86-interrupt" fn stack_segment_fault_handler(
     error_code: u64,
 )
 {
-    println!("EXCEPTION: STACK SEGMENT FAULT\n{:#?}", stack_frame);
-    println!("Error code: {}", error_code);
+    fatal!("EXCEPTION: STACK SEGMENT FAULT\n{:#?}", stack_frame);
+    fatal!("Error code: {}", error_code);
     loop {}
 }
 
@@ -139,8 +139,8 @@ extern "x86-interrupt" fn general_protection_fault_handler(
     error_code: u64,
 )
 {
-    println!("EXCEPTION: GENERAL PROTECTION FAULT\n{:#?}", stack_frame);
-    println!("Error code: {}", error_code);
+    fatal!("EXCEPTION: GENERAL PROTECTION FAULT\n{:#?}", stack_frame);
+    fatal!("Error code: {}", error_code);
     loop {}
 }
 
@@ -150,17 +150,17 @@ extern "x86-interrupt" fn page_fault_handler(
 ) {
     use x86_64::registers::control::Cr2;
 
-    println!("EXCEPTION: PAGE FAULT");
-    println!("Accessed Address: {:?}", Cr2::read());
-    println!("Error Code: {:?}", error_code);
-    println!("{:#?}", stack_frame);
-    loop {}
+    error!("EXCEPTION: PAGE FAULT\n{:#?}", stack_frame);
+    error!("Accessed Address: {:?}", Cr2::read());
+    error!("Error Code: {:?}", error_code);
+    error!("{:#?}", stack_frame);
+    //loop {}
 }
 
 extern "x86-interrupt" fn x87_floating_point_handler(
     stack_frame: InterruptStackFrame)
 {
-    println!("EXCEPTION: X87 FLOATING POINT\n{:#?}", stack_frame);
+    note!("EXCEPTION: X87 FLOATING POINT\n{:#?}", stack_frame);
 }
 
 extern "x86-interrupt" fn alignment_check_handler(
@@ -168,28 +168,28 @@ extern "x86-interrupt" fn alignment_check_handler(
     error_code: u64,
 )
 {
-    println!("EXCEPTION: ALIGNMENT CHECK\n{:#?}", stack_frame);
-    println!("Error code: {}", error_code);
+    fatal!("EXCEPTION: ALIGNMENT CHECK\n{:#?}", stack_frame);
+    fatal!("Error code: {}", error_code);
     loop {}
 }
 
 extern "x86-interrupt" fn machine_check_handler(
     stack_frame: InterruptStackFrame)
 -> ! {
-    println!("EXCEPTION: MACHINE CHECK\n{:#?}", stack_frame);
+    fatal!("EXCEPTION: MACHINE CHECK\n{:#?}", stack_frame);
     loop {}
 }
 
 extern "x86-interrupt" fn simd_floating_point_handler(
     stack_frame: InterruptStackFrame)
 {
-    println!("EXCEPTION: SIMD FLOATING POINT\n{:#?}", stack_frame);
+    note!("EXCEPTION: SIMD FLOATING POINT\n{:#?}", stack_frame);
 }
 
 extern "x86-interrupt" fn virtualization_handler(
     stack_frame: InterruptStackFrame)
 {
-    println!("EXCEPTION: VIRTUALIZATION\n{:#?}", stack_frame);
+    note!("EXCEPTION: VIRTUALIZATION\n{:#?}", stack_frame);
 }
 
 extern "x86-interrupt" fn timer_handler(

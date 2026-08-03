@@ -2,11 +2,13 @@
 #![no_std]
 
 pub mod interrupts;
-pub mod vga_buffer;
+
 pub mod gdt;
 pub mod apic;
 pub mod mm;
-pub mod process;
+pub mod screen;
+pub mod serial;
+pub mod logger;
 
 pub fn init() {
     gdt::init();
