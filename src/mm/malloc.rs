@@ -1,6 +1,6 @@
 use x86_64::registers::control::Cr3;
 
-use crate::{mm::{frame_alloc::{alloc_frame, zero_page4k}, paging::{make_pde, make_pte}}, println};
+use crate::{mm::{frame_alloc::{alloc_frame, dealloc_frame, zero_page4k}, paging::{make_pde, make_pte}}, println};
 
 pub static mut PT_CURRENT: usize = 0;
 
@@ -95,14 +95,14 @@ pub unsafe fn kmalloc(size: usize) -> *mut u8 {
         count += 1;
     }
 
+    let total_size = count * 4096 + 8;
+
     for i in 0..count {
-        // 1. Get Frame
         let frame = alloc_frame();
         if frame == 0 {
             return core::ptr::null_mut::<u8>();
         }
 
-        // 2. Map Frame
         let (pml4_addr, _) = Cr3::read();
         let pml4_addr = pml4_addr.start_address().as_u64();
         let pdpte_addr: u64 = pml4_addr + 4096 + 8;
@@ -125,11 +125,65 @@ pub unsafe fn kmalloc(size: usize) -> *mut u8 {
             PT_COUNT += 1;
         }
 
-        // 3. Get Virtual Address
         if i == 0 {
             virt_addr = translate_addr(frame);
         }
     }
 
-    virt_addr as *mut u8
+    let ptr = virt_addr as *mut u64;
+    *ptr = total_size as u64;
+
+    (virt_addr + 8) as *mut u8
+}
+
+pub unsafe fn kfree(virt_addr: *mut u8) {
+    if virt_addr.is_null() {
+        return;
+    }
+
+    let ptr = (virt_addr as u64 - 8) as *mut u64;
+    let total_size = *ptr as usize;
+
+    let mut count = total_size / 4096;
+
+    let vaddr = virt_addr as u64 - 8;
+    let (pml4_addr, _) = Cr3::read();
+    let pml4_addr = pml4_addr.start_address().as_u64();
+
+    for i in 0..count {
+        let v = vaddr + (i as u64) * 4096;
+        let pml4_idx = ((v >> 39) & 0x1FF) as usize;
+        let pdpt_idx = ((v >> 30) & 0x1FF) as usize;
+        let pd_idx = ((v >> 21) & 0x1FF) as usize;
+        let pt_idx = ((v >> 12) & 0x1FF) as usize;
+
+        let pml4e = *((pml4_addr + pml4_idx as u64 * 8) as *const u64);
+        if pml4e & PG_PRESENT == 0 {
+            continue;
+        }
+        let pdpt_base = pml4e & 0x000FFFFFFFFFF000;
+
+        let pdpte = *((pdpt_base + pdpt_idx as u64 * 8) as *const u64);
+        if pdpte & PG_PRESENT == 0 {
+            continue;
+        }
+        let pd_base = pdpte & 0x000FFFFFFFFFF000;
+
+        let pde = *((pd_base + pd_idx as u64 * 8) as *const u64);
+        if pde & PG_PRESENT == 0 {
+            continue;
+        }
+        let pt_base = pde & 0x000FFFFFFFFFF000;
+
+        let pte_addr = pt_base + pt_idx as u64 * 8;
+        let pte = *(pte_addr as *const u64);
+        if pte & PG_PRESENT == 0 {
+            continue;
+        }
+
+        let frame = pte & 0x000FFFFFFFFFF000;
+        dealloc_frame(frame);
+
+        *(pte_addr as *mut u64) = 0;
+    }
 }

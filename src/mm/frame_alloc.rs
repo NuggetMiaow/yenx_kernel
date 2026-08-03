@@ -76,3 +76,16 @@ pub unsafe fn alloc_frame() -> u64 {
 
     0x800000 + ((frame_index as u64) - 1 as u64) * 4096
 }
+
+pub unsafe fn dealloc_frame(frame: u64) {
+    if frame < 0x800000 {
+        return;
+    }
+    let frame_index = ((frame - 0x800000) / 4096) as usize;
+    if frame_index >= MAX_PAGE {
+        return;
+    }
+    let bitmap_index = frame_index / 8;
+    let bit_index = frame_index % 8;
+    FRAME_BITMAP[bitmap_index] &= !(1 << (7 - bit_index));
+}
