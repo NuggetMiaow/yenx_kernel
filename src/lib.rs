@@ -9,6 +9,7 @@ pub mod mm;
 pub mod screen;
 pub mod serial;
 pub mod logger;
+pub mod process;
 
 pub fn init() {
     gdt::init();

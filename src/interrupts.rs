@@ -1,11 +1,14 @@
 
 
+use core::arch::global_asm;
+
 use x86_64::structures::idt::PageFaultErrorCode;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 
 use lazy_static::lazy_static;
 
 
+use crate::process::{Context, schedule};
 use crate::{debug, error, fatal, gdt, note};
 use crate::apic;
 
@@ -35,7 +38,9 @@ lazy_static! {
         idt.machine_check.set_handler_fn(machine_check_handler);
         idt.simd_floating_point.set_handler_fn(simd_floating_point_handler);
         idt.virtualization.set_handler_fn(virtualization_handler);
+        debug!("Loaded Exception handler");
         idt[apic::TIMER_VECTOR].set_handler_fn(timer_handler);
+        debug!("APIC Timer has been registered");
         idt
     };
 }
@@ -153,8 +158,7 @@ extern "x86-interrupt" fn page_fault_handler(
     error!("EXCEPTION: PAGE FAULT\n{:#?}", stack_frame);
     error!("Accessed Address: {:?}", Cr2::read());
     error!("Error Code: {:?}", error_code);
-    error!("{:#?}", stack_frame);
-    //loop {}
+    loop {}
 }
 
 extern "x86-interrupt" fn x87_floating_point_handler(
@@ -192,9 +196,36 @@ extern "x86-interrupt" fn virtualization_handler(
     note!("EXCEPTION: VIRTUALIZATION\n{:#?}", stack_frame);
 }
 
+global_asm!(
+    ".global save_register",
+    "save_register:",
+    "mov [rdi], rax",
+    "mov [rdi + 8], rbx",
+    "mov [rdi + 16], rcx",
+    "mov [rdi + 24], rdx",
+    "mov [rdi + 32], r8",
+    "mov [rdi + 40], r9",
+    "mov [rdi + 48], r10",
+    "mov [rdi + 56], r11",
+    "mov [rdi + 64], r12",
+    "mov [rdi + 72], r13",
+    "mov [rdi + 80], r14",
+    "mov [rdi + 88], r15",
+    "ret"
+);
+
+extern "C" {
+    fn save_register(context: *mut Context);
+}
+
 extern "x86-interrupt" fn timer_handler(
-    _stack_frame: InterruptStackFrame)
+    stack_frame: InterruptStackFrame)
 {
+    let mut context: Context = Context::new();
+    unsafe {
+        save_register(&mut context); 
+        schedule(context, stack_frame);
+    }
     apic::x2apic_eoi();
     apic::x2apic_timer_rearm();
 }

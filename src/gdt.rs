@@ -5,6 +5,8 @@ use x86_64::instructions::tables::load_tss;
 use x86_64::instructions::segmentation::{CS, DS, ES, FS, GS, SS, Segment};
 use lazy_static::lazy_static;
 
+use crate::debug;
+
 pub const DOUBLE_FAULT_IST_INDEX: u16 = 0;
 
 lazy_static! {
@@ -49,4 +51,5 @@ pub fn init() {
         SS::set_reg(GDT.1.data_selector);
         load_tss(GDT.1.tss_selector);
     }
+    debug!("Loaded GDT");
 }

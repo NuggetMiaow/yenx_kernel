@@ -2,7 +2,7 @@ use core::ptr::write_volatile;
 
 use x86_64::registers::debug;
 
-use crate::{debug, fatal, info, mm::{frame_alloc::zero_memory, malloc::translate_addr, paging::{self, make_pde, make_pdpte}}, screen};
+use crate::{debug, fatal, info, logger, mm::{frame_alloc::zero_memory, malloc::translate_addr, paging::{self, make_pde, make_pdpte}}, screen};
 
 
 #[derive(Debug)]
@@ -36,6 +36,12 @@ const PG_USER: u64 = 1 << 2;
 const PG_CACHED: u64 = 1 << 3;
 const PG_EXECUTABLE: u64 = 0 << 63;
 const PG_GLOBAL: u64 = 1 << 8;
+
+pub fn clean_screen() {
+    unsafe { for i in 0..FB_WIDTH * FB_HEIGHT {
+        (FB_ADDR as *mut u32).add(i).write(0x313131);
+    } }
+}
 
 pub fn init(mb_info_addr: *mut u8) {
     unsafe {
@@ -89,50 +95,12 @@ pub fn init(mb_info_addr: *mut u8) {
 
         // trying to access framebuffer
         debug!("Clean up screen");
-        for i in 0..FB_WIDTH * FB_HEIGHT {
-            (FB_ADDR as *mut u32).add(i).write(0x313131);
-        }
-
-        for i in 0..16 {
-            let mut bits: [u8; 8] = [0; 8];
-
-            bits[0] = screen::font8x16::FONT8X16[b'H' as usize][i] >> 7;
-            bits[1] = screen::font8x16::FONT8X16[b'H' as usize][i] >> 6 & 1;
-            bits[2] = screen::font8x16::FONT8X16[b'H' as usize][i] >> 5 & 1;
-            bits[3] = screen::font8x16::FONT8X16[b'H' as usize][i] >> 4 & 1;
-            bits[4] = screen::font8x16::FONT8X16[b'H' as usize][i] >> 3 & 1;
-            bits[5] = screen::font8x16::FONT8X16[b'H' as usize][i] >> 2 & 1;
-            bits[6] = screen::font8x16::FONT8X16[b'H' as usize][i] >> 1 & 1;
-            bits[7] = screen::font8x16::FONT8X16[b'H' as usize][i];
-
-            for j in 0..8 {
-                if bits[j] == 1 {
-                    put_pixel((j + 10) as usize, (i + 10) as usize, 0xFFFFFF);
-                }
-            }
-        }
-
-        for i in 0..16 {
-            let mut bits: [u8; 8] = [0; 8];
-
-            bits[0] = screen::font8x16::FONT8X16[b'i' as usize][i] >> 7;
-            bits[1] = screen::font8x16::FONT8X16[b'i' as usize][i] >> 6 & 1;
-            bits[2] = screen::font8x16::FONT8X16[b'i' as usize][i] >> 5 & 1;
-            bits[3] = screen::font8x16::FONT8X16[b'i' as usize][i] >> 4 & 1;
-            bits[4] = screen::font8x16::FONT8X16[b'i' as usize][i] >> 3 & 1;
-            bits[5] = screen::font8x16::FONT8X16[b'i' as usize][i] >> 2 & 1;
-            bits[6] = screen::font8x16::FONT8X16[b'i' as usize][i] >> 1 & 1;
-            bits[7] = screen::font8x16::FONT8X16[b'i' as usize][i];
-
-            for j in 0..8 {
-                if bits[j] == 1 {
-                    put_pixel((j + 19) as usize, (i + 10) as usize, 0xFFFFFF);
-                }
-            }
-        }
+        clean_screen();
         
+        logger::ENABLE_SCREEN = true;
+        debug!("Enabled Screen Logger");
         // Show the information
-        info!("{:?}", fb);
+        info!("Framebuffer:\r\n{:#?}", fb);
     }
 }
 

@@ -92,9 +92,10 @@ fn x2apic_read(msr: u32) -> u64 {
 }
 
 pub fn apic_init() {
+    debug!("Ready to init x2apic");
     let ver = x2apic_read(X2APIC_VERSION);
     let id = x2apic_read(X2APIC_ID);
-    //println!("APIC ID: {}, Version: {}", id, (ver >> 16) & 0xFF);
+    info!("APIC ID: {}, Version: {}", id, (ver >> 16) & 0xFF);
 
     x2apic_write(X2APIC_SPURIOUS, 0xFF | (1 << 8));
 
@@ -124,7 +125,7 @@ pub fn apic_timer_diag() {
     let lvt = x2apic_read(X2APIC_LVT_TIMER);
     let init = x2apic_read(X2APIC_TIMER_INIT);
     let cur = x2apic_read(X2APIC_TIMER_CURRENT);
-    //println!("DIV: 0x{:x}, LVT: 0x{:x}, INIT: 0x{:x}, CURRENT: 0x{:x}", div, lvt, init, cur);
+    debug!("APIC Timer: DIV: 0x{:x}, LVT: 0x{:x}, INIT: 0x{:x}, CURRENT: 0x{:x}", div, lvt, init, cur);
 }
 
 pub fn x2apic_timer_rearm() {
@@ -132,6 +133,8 @@ pub fn x2apic_timer_rearm() {
 }
 
 use x86_64::instructions::port::PortReadOnly;
+
+use crate::{debug, info};
 
 const KEYBOARD_STATUS: u16 = 0x64;
 const KEYBOARD_DATA: u16   = 0x60;

@@ -1,8 +1,10 @@
 use core::fmt::{self, Write};
 
-use crate::{sprint, sprintln};
+use crate::{print, println, sprint, sprintln};
 
 static mut LOG_LEVEL: u64 = 0;
+
+pub static mut ENABLE_SCREEN: bool = false;
 
 #[macro_export]
 macro_rules! debug {
@@ -36,6 +38,9 @@ macro_rules! fatal {
 
 pub fn _debug(args: fmt::Arguments) {
     if unsafe { LOG_LEVEL } == 0 {
+        if unsafe { ENABLE_SCREEN } == true {
+           //crate::screen::output::WRITER.lock().write_fmt(format_args!("[DEBUG] {}\n", args)).unwrap();
+        }
         sprint!("[DEBUG] ");
         crate::serial::SENDER.lock().write_fmt(args).unwrap();
         sprintln!("");
@@ -44,6 +49,9 @@ pub fn _debug(args: fmt::Arguments) {
 
 pub fn _info(args: fmt::Arguments) {
     if unsafe { LOG_LEVEL } <= 1 {
+        if unsafe { ENABLE_SCREEN } == true {
+            crate::screen::output::WRITER.lock().write_fmt(format_args!("[INFO] {}\n", args)).unwrap();
+        }
         sprint!("[INFO] ");
         crate::serial::SENDER.lock().write_fmt(args).unwrap();
         sprintln!("");
@@ -52,6 +60,9 @@ pub fn _info(args: fmt::Arguments) {
 
 pub fn _note(args: fmt::Arguments) {
     if unsafe { LOG_LEVEL } <= 2 {
+        if unsafe { ENABLE_SCREEN } == true {
+            crate::screen::output::WRITER.lock().write_fmt(format_args!("[NOTE] {}\n", args)).unwrap();
+        }
         sprint!("[NOTE] ");
         crate::serial::SENDER.lock().write_fmt(args).unwrap();
         sprintln!("");
@@ -60,6 +71,9 @@ pub fn _note(args: fmt::Arguments) {
 
 pub fn _warn(args: fmt::Arguments) {
     if unsafe { LOG_LEVEL } <= 3 {
+        if unsafe { ENABLE_SCREEN } == true {
+            crate::screen::output::WRITER.lock().write_fmt(format_args!("[WARN] {}\n", args)).unwrap();
+        }
         sprint!("[WARN] ");
         crate::serial::SENDER.lock().write_fmt(args).unwrap();
         sprintln!("");
@@ -68,6 +82,9 @@ pub fn _warn(args: fmt::Arguments) {
 
 pub fn _error(args: fmt::Arguments) {
     if unsafe { LOG_LEVEL } <= 4 {
+        if unsafe { ENABLE_SCREEN } == true {
+            crate::screen::output::WRITER.lock().write_fmt(format_args!("[ERROR] {}\n", args)).unwrap();
+        }
         sprint!("[ERROR] ");
         crate::serial::SENDER.lock().write_fmt(args).unwrap();
         sprintln!("");
@@ -76,6 +93,10 @@ pub fn _error(args: fmt::Arguments) {
 
 pub fn _fatal(args: fmt::Arguments) {
     if unsafe { LOG_LEVEL } <= 5 {
+        if unsafe { ENABLE_SCREEN } == true {
+            crate::screen::output::WRITER.lock().write_fmt(format_args!("[FATAL] {}\n", args)).unwrap();
+            //crate::screen::output::WRITER.lock().flush_buffer();
+        }
         sprint!("[FATAL] ");
         crate::serial::SENDER.lock().write_fmt(args).unwrap();
         sprintln!("");

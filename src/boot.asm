@@ -36,8 +36,6 @@ header_end:
 ; ============================================================
 section .text
 _start:
-	out 0x3F8, 'H'
-    out 0x3f8, 'i'
     cmp eax, 0x36D76289               ; 检查 Multiboot2 魔数
     jne .no_multiboot
 

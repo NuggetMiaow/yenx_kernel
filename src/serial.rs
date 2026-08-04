@@ -32,6 +32,10 @@ pub fn send_char(c: u8) {
             }
         }
 
+        if c == b'\n' {
+            Port::write(&mut Port::new(0x3f8), b'\r');
+        }
+
         Port::write(&mut Port::new(0x3f8), c);
     }
 }
@@ -59,7 +63,7 @@ macro_rules! sprint {
 #[macro_export]
 macro_rules! sprintln {
     () => ($crate::print!("\n"));
-    ($($arg:tt)*) => ($crate::sprint!("{}\r\n", format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::sprint!("{}\n", format_args!($($arg)*)));
 }
 
 #[doc(hidden)]
