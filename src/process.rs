@@ -1,10 +1,20 @@
 extern crate alloc;
 
-use core::{any::Any, arch::global_asm};
 use alloc::vec::Vec;
-use x86_64::{registers::{self, segmentation::{CS, SS, Segment}}, structures::idt::InterruptStackFrame};
+use core::{any::Any, arch::global_asm};
+use x86_64::{
+    registers::{
+        self,
+        segmentation::{Segment, CS, SS},
+    },
+    structures::idt::InterruptStackFrame,
+};
 
-use crate::{debug, info, mm::malloc, process::ProcessState::{Ready, Running}};
+use crate::{
+    debug, info,
+    mm::malloc,
+    process::ProcessState::{Ready, Running},
+};
 
 #[derive(Clone, Copy)]
 #[repr(C, packed)]
@@ -47,7 +57,7 @@ impl Context {
             rsp: 0,
             rflags: 0,
             cs: 0,
-            rip: 0
+            rip: 0,
         }
     }
 }
@@ -55,42 +65,19 @@ impl Context {
 #[derive(Clone, Copy)]
 pub enum ProcessState {
     Running,
-    Ready
+    Ready,
 }
 
 #[derive(Clone)]
 pub struct Process {
     pub state: ProcessState,
     pub context: Context,
-    pub stack: *mut u8
+    pub stack: *mut u8,
 }
-
-global_asm!(
-    ".global switch_to",
-    "switch_to:",
-    "mov rax, [rdi]",
-    "mov rbx, [rdi + 8]",
-    "mov rcx, [rdi + 16]",
-    "mov rdx, [rdi + 24]",
-    "mov r8, [rdi + 32]",
-    "mov r9, [rdi + 40]",
-    "mov r10, [rdi + 48]",
-    "mov r11, [rdi + 56]",
-    "mov r12, [rdi + 64]",
-    "mov r13, [rdi + 72]",
-    "mov r14, [rdi + 80]",
-    "mov r15, [rdi + 88]",
-    "push [rdi + 96]",
-    "push [rdi + 104]",
-    "push [rdi + 112]",
-    "push [rdi + 120]",
-    "push [rdi + 128]",
-    "iretq"
-);
 
 pub static mut PROCESSES: Vec<Process> = Vec::<Process>::new();
 
-pub fn spawn(entry: extern "C" fn()->!) {
+pub fn spawn(entry: extern "C" fn() -> !) {
     debug!("spawn a process");
     let mut ctx = Context::new();
 
@@ -104,12 +91,11 @@ pub fn spawn(entry: extern "C" fn()->!) {
     ctx.cs = CS::get_reg().0 as u64;
     ctx.rip = entry as u64;
 
-
     unsafe {
         PROCESSES.push(Process {
             state: ProcessState::Ready,
             context: ctx,
-            stack: stack
+            stack: stack,
         });
     }
 }
@@ -140,13 +126,33 @@ pub unsafe fn schedule(regs: Context, frame: InterruptStackFrame) {
         old_p.context = old_ctx;
     } else {
         let old_p = &mut PROCESSES[len - 1];
-        old_p.state = Ready;      
-        old_p.context = old_ctx;  
+        old_p.state = Ready;
+        old_p.context = old_ctx;
     }
 
     let p: &mut Process = &mut PROCESSES[CURRENT_PID];
     p.state = Running;
 
     info!("hooray");
-    switch_to(p.context);
+    core::arch::asm!(
+        "mov rax, [rdi]",
+        "mov rbx, [rdi + 8]",
+        "mov rcx, [rdi + 16]",
+        "mov rdx, [rdi + 24]",
+        "mov r8, [rdi + 32]",
+        "mov r9, [rdi + 40]",
+        "mov r10, [rdi + 48]",
+        "mov r11, [rdi + 56]",
+        "mov r12, [rdi + 64]",
+        "mov r13, [rdi + 72]",
+        "mov r14, [rdi + 80]",
+        "mov r15, [rdi + 88]",
+        "push [rdi + 96]",
+        "push [rdi + 104]",
+        "push [rdi + 112]",
+        "push [rdi + 120]",
+        "push [rdi + 128]",
+        "iretq",
+        in("rdi") &p.context,
+    );
 }
